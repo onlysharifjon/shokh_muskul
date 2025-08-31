@@ -1,0 +1,10 @@
+Django==5.0.3
+djangorestframework==3.15.1
+djangorestframework-simplejwt==5.3.1
+psycopg2-binary==2.9.9  # agar PostgreSQL ishlatayotgan bo‘lsang
+mysqlclient==2.2.4       # agar MySQL ishlatayotgan bo‘lsang (PostgreSQL o‘rniga)
+python-dotenv==1.0.1     # .env fayldan o‘qish uchun
+firebase-admin==6.5.0    # notification jo‘natish uchun Firebase
+requests==2.32.3         # tashqi API so‘rovlar uchun
+gunicorn==22.0.0         # deploy uchun (agar Linux serverda ishlatsa)
+aiogram==2.25.1
