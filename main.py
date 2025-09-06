@@ -1,35 +1,33 @@
 import os
-import asyncio
-from datetime import datetime
 import logging
+from dataclasses import dataclass
+from typing import Dict, Tuple, Optional
+
 from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
+
+# ------------- CONFIG -------------
 logging.basicConfig(level=logging.INFO)
-# ---------------- CONFIG ----------------
-API_TOKEN = "5105648336:AAHlX2hH76iKGzcDiphhaQp7BZ9QuXqmjmA"
-REDIS_DSN = os.getenv("REDIS_DSN",)
-
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-storage = MemoryStorage()
+API_TOKEN = "5105648336:AAHlX2hH76iKGzcDiphhaQp7BZ9QuXqmjmA"  # .env da saqlang
+if API_TOKEN == "REPLACE_ME":
+    logging.warning("⚠️ BOT_TOKEN o'rnatilmagan. .env orqali o'rnating: BOT_TOKEN=...")
 bot = Bot(token=API_TOKEN, parse_mode="HTML")
-dp = Dispatcher(bot, storage=storage)
+dp = Dispatcher(bot, storage=MemoryStorage())
 
-
-
-
-# ---------------- FSM STATES ----------------
+# ------------- STATES -------------
 class CaloriesStates(StatesGroup):
     waiting_height = State()
     waiting_weight = State()
     waiting_age = State()
     waiting_gender = State()
     waiting_activity = State()
+    waiting_goal = State()
 
-# ---------------- KEYBOARDS ----------------
+# ------------- KEYBOARDS -------------
 main_kb = InlineKeyboardMarkup().add(
     InlineKeyboardButton("🧮 Kaloriya hisoblash", callback_data="calories")
 ).add(
@@ -37,47 +35,116 @@ main_kb = InlineKeyboardMarkup().add(
 ).add(
     InlineKeyboardButton("🍽️ Ovqat menyu", callback_data="nutrition")
 )
-gender_kb = InlineKeyboardMarkup().add(
+
+gender_kb = InlineKeyboardMarkup().row(
     InlineKeyboardButton("👨 Erkak", callback_data="gender_male"),
     InlineKeyboardButton("👩 Ayol", callback_data="gender_female"),
 )
 
-activity_kb = InlineKeyboardMarkup().add(
-    InlineKeyboardButton("🛋️ Kam faol", callback_data="act_low"),
-    InlineKeyboardButton("🚶‍♂️ O'rta faol", callback_data="act_medium"),
-    InlineKeyboardButton("🏃‍♂️ Faol", callback_data="act_high"),
-    InlineKeyboardButton("🏋️‍♂️ Juda faol", callback_data="act_very_high"),
+# Faoliyat koeffitsientlari (siz bergan diapazon bilan)
+ACTIVITY_LEVELS: Dict[str, Tuple[str, float]] = {
+    "act_sedentary": ("🛋️ Minimal (o‘tirib ish)", 1.2),
+    "act_light":     ("🚶‍♂️ Yengil (1–3 marta/hafta)", 1.375),
+    "act_medium":    ("🏃‍♂️ O‘rta (3–5 marta/hafta)", 1.55),
+    "act_high":      ("🏋️‍♂️ Yuqori (6–7 marta/hafta)", 1.725),
+    "act_athlete":   ("🏆 Professional sport", 1.9),
+}
+
+activity_kb = InlineKeyboardMarkup(row_width=1)
+for cb, (label, _) in ACTIVITY_LEVELS.items():
+    activity_kb.insert(InlineKeyboardButton(label, callback_data=cb))
+
+goal_kb = InlineKeyboardMarkup().row(
+    InlineKeyboardButton("⬇️ Ozish", callback_data="goal_cut"),
+    InlineKeyboardButton("↔️ Formani ushlash", callback_data="goal_maintain"),
+    InlineKeyboardButton("⬆️ Vazn olish", callback_data="goal_bulk"),
 )
 
-# ---------------- HELPERS ----------------
-def calculate_bmr(height_cm, weight_kg, age, gender):
+# ------------- HELPERS -------------
+
+def calculate_bmr(height_cm: float, weight_kg: float, age: int, gender: str) -> float:
+    """Mifflin–St Jeor"""
     if gender == "male":
         return 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
     else:
         return 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
 
-# ---------------- HANDLERS ----------------
-@dp.message_handler(commands=['start'])
+def apply_goal_calories(tdee: float, goal: str) -> float:
+    """goal_cut: -15%, goal_bulk: +15%, maintain: 0%"""
+    if goal == "goal_cut":
+        return tdee * 0.85
+    if goal == "goal_bulk":
+        return tdee * 1.15
+    return tdee
+
+@dataclass
+class MacroSplit:
+    protein_pct: Tuple[float, float]  # foiz (min, max yoki (x,x))
+    fat_pct: Tuple[float, float]
+    carb_pct: Tuple[float, float]
+
+def get_macro_split(goal: str) -> MacroSplit:
+    """
+    Siz bergan proporsiyalar:
+    - Ozish: 40% oqsil, 30% yog', 30% uglevod
+    - Vazn olish: 30% oqsil, 20% yog', 50% uglevod
+    - Formani ushlash: 30–40% oqsil, 25–30% yog', 30–40% uglevod
+    """
+    if goal == "goal_cut":
+        return MacroSplit((40, 40), (30, 30), (30, 30))
+    if goal == "goal_bulk":
+        return MacroSplit((30, 30), (20, 20), (50, 50))
+    # maintain: diapazon
+    return MacroSplit((30, 40), (25, 30), (30, 40))
+
+def kcal_to_grams(kcal: float, macro_pct: Tuple[float, float]) -> Tuple[float, float]:
+    """
+    kcal -> gramm diapazonini qaytaradi. Protein & Carb: 4 kcal/g, Fat: 9 kcal/g
+    Bu funksiya universal emas, shuning uchun fat uchun alohida ishlatamiz.
+    """
+    p_min, p_max = macro_pct
+    return (kcal * p_min / 100 / 4, kcal * p_max / 100 / 4)
+
+def kcal_to_grams_fat(kcal: float, macro_pct: Tuple[float, float]) -> Tuple[float, float]:
+    f_min, f_max = macro_pct
+    return (kcal * f_min / 100 / 9, kcal * f_max / 100 / 9)
+
+def pretty_range_or_value(unit: str, rng: Tuple[float, float]) -> str:
+    a, b = rng
+    if abs(a - b) < 1e-6:
+        return f"{a:.0f} {unit}"
+    return f"{a:.0f}–{b:.0f} {unit}"
+
+def round_range(rng: Tuple[float, float], ndigits: int = 0) -> Tuple[float, float]:
+    return (round(rng[0], ndigits), round(rng[1], ndigits))
+
+# ------------- HANDLERS -------------
+
+@dp.message_handler(commands=["start"])
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer(
         "🏋️‍♂️ Xush kelibsiz!\n\n"
-        "Bu bot sizga kaloriya hisoblash, workout va ovqat menyusi tuzishda yordam beradi.",
+        "Bu bot sizga <b>kaloriya</b> va <b>makro</b> hisoblashda yordam beradi.\n"
+        "Boshlash uchun menudan tanlang:",
         reply_markup=main_kb
     )
 
 @dp.callback_query_handler(lambda c: c.data == "calories")
-async def cb_calories(callback_query: types.CallbackQuery):
+async def cb_calories(callback_query: types.CallbackQuery, state: FSMContext):
     await CaloriesStates.waiting_height.set()
+    await state.update_data(tdee=None)  # keyinchalik to'ldiramiz
     await callback_query.message.answer("📏 Bo'yingizni kiriting (sm):")
     await callback_query.answer()
 
 @dp.message_handler(state=CaloriesStates.waiting_height)
 async def process_height(message: types.Message, state: FSMContext):
     try:
-        h = int(message.text)
-    except ValueError:
-        return await message.answer("Bo'yingizni raqam bilan yuboring (masalan: 175)")
+        h = float(message.text)
+        if not (80 <= h <= 250):
+            raise ValueError
+    except Exception:
+        return await message.answer("Bo'yingizni to‘g‘ri kiriting (masalan, 175).")
     await state.update_data(height=h)
     await CaloriesStates.waiting_weight.set()
     await message.answer("⚖️ Vazningizni kiriting (kg):")
@@ -86,18 +153,22 @@ async def process_height(message: types.Message, state: FSMContext):
 async def process_weight(message: types.Message, state: FSMContext):
     try:
         w = float(message.text)
-    except ValueError:
-        return await message.answer("Vazn son bo‘lishi kerak (masalan: 70)")
+        if not (20 <= w <= 400):
+            raise ValueError
+    except Exception:
+        return await message.answer("Vaznni to‘g‘ri kiriting (masalan, 70.5).")
     await state.update_data(weight=w)
     await CaloriesStates.waiting_age.set()
-    await message.answer("🎂 Yoshingizni kiriting:")
+    await message.answer("🎂 Yoshingizni kiriting (yil):")
 
 @dp.message_handler(state=CaloriesStates.waiting_age)
 async def process_age(message: types.Message, state: FSMContext):
     try:
         age = int(message.text)
-    except ValueError:
-        return await message.answer("Yosh butun son bo‘lishi kerak.")
+        if not (10 <= age <= 100):
+            raise ValueError
+    except Exception:
+        return await message.answer("Yoshni to‘g‘ri kiriting (masalan, 28).")
     await state.update_data(age=age)
     await CaloriesStates.waiting_gender.set()
     await message.answer("👤 Jinsingizni tanlang:", reply_markup=gender_kb)
@@ -107,34 +178,92 @@ async def process_gender(callback_query: types.CallbackQuery, state: FSMContext)
     gender = "male" if callback_query.data == "gender_male" else "female"
     await state.update_data(gender=gender)
     await CaloriesStates.waiting_activity.set()
-    await callback_query.message.answer("🏃‍♂️ Faoliyat darajangizni tanlang:", reply_markup=activity_kb)
+    txt = (
+        "🏃‍♂️ Faoliyat darajangizni tanlang (TDEE hisoblash uchun):\n\n"
+        "1. 1.2 — minimal (o‘tirib ish)\n"
+        "2. 1.375 — yengil (1–3 marotaba/hafta)\n"
+        "3. 1.55 — o‘rta (3–5 marotaba/hafta)\n"
+        "4. 1.725 — yuqori (6–7 marotaba/hafta)\n"
+        "5. 1.9 — professional sport"
+    )
+    await callback_query.message.answer(txt, reply_markup=activity_kb)
     await callback_query.answer()
-@dp.callback_query_handler(lambda c: c.data.startswith("act_"), state=CaloriesStates.waiting_activity)
-async def process_activity(callback_query: types.CallbackQuery, state: FSMContext):
-    activity_map = {
-        "act_low": 1.2,
-        "act_medium": 1.55,
-        "act_high": 1.725,
-        "act_very_high": 1.9
-    }
-    activity_level = activity_map[callback_query.data]
 
+@dp.callback_query_handler(lambda c: c.data in ACTIVITY_LEVELS.keys(), state=CaloriesStates.waiting_activity)
+async def process_activity(callback_query: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
+    activity_factor = ACTIVITY_LEVELS[callback_query.data][1]
+
+    # BMR -> TDEE
     bmr = calculate_bmr(
         height_cm=data["height"],
         weight_kg=data["weight"],
         age=data["age"],
         gender=data["gender"]
     )
-    calories = round(bmr * activity_level)
+    tdee = bmr * activity_factor
+    await state.update_data(tdee=tdee)
 
     await callback_query.message.answer(
-        f"✅ Sizning taxminiy kunlik kaloriya ehtiyojingiz:\n\n"
-        f"<b>{calories} kcal</b> ⚡️"
+        f"✅ <b>TDEE (faoliyat hisobga olingan): {round(tdee):,} kcal</b>\n\n"
+        "Endi maqsadni tanlang:",
+        reply_markup=goal_kb
     )
+    await CaloriesStates.waiting_goal.set()
+    await callback_query.answer()
+
+@dp.callback_query_handler(lambda c: c.data in ("goal_cut", "goal_maintain", "goal_bulk"), state=CaloriesStates.waiting_goal)
+async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
+    goal = callback_query.data
+    data = await state.get_data()
+    tdee = float(data.get("tdee", 0.0))
+
+    if tdee <= 0:
+        await callback_query.message.answer("Xatolik: TDEE topilmadi. /start dan qayta urinib ko‘ring.")
+        await state.finish()
+        return
+
+    target_kcal = apply_goal_calories(tdee, goal)
+    split = get_macro_split(goal)
+
+    # Grammlarga o'tkazish
+    # protein & carb: 4 kcal/g, fat: 9 kcal/g
+    p_g = round_range(kcal_to_grams(target_kcal, split.protein_pct))
+    f_g = round_range(kcal_to_grams_fat(target_kcal, split.fat_pct))
+    c_g = round_range(kcal_to_grams(target_kcal, split.carb_pct))
+
+    # Ko‘rinishni chiroyli qilish
+    goal_name = {"goal_cut": "⬇️ Ozish", "goal_maintain": "↔️ Formani ushlash", "goal_bulk": "⬆️ Vazn olish"}[goal]
+
+    # Foizlarni matnga
+    def pct_txt(p: Tuple[float, float]) -> str:
+        a, b = p
+        return f"{a:.0f}%" if abs(a-b) < 1e-6 else f"{a:.0f}–{b:.0f}%"
+
+    msg = (
+        f"{goal_name} maqsadi uchun hisob-kitob:\n\n"
+        f"🔥 <b>Kunlik kaloriya:</b> {round(target_kcal):,} kcal\n"
+        f"🍗 Oqsil: {pct_txt(split.protein_pct)} → {pretty_range_or_value('g', p_g)}\n"
+        f"🥑 Yog': {pct_txt(split.fat_pct)} → {pretty_range_or_value('g', f_g)}\n"
+        f"🍚 Uglevod: {pct_txt(split.carb_pct)} → {pretty_range_or_value('g', c_g)}\n\n"
+        f"<i>(Hisob: BMR → TDEE × faoliyat → ±15% maqsadga ko‘ra → foizlardan grammga)</i>"
+    )
+
+    await callback_query.message.answer(msg)
     await state.finish()
     await callback_query.answer()
 
-# ---------------- RUN ----------------
+# (Ixtiyoriy) Workouts / nutrition tugmalari hozircha stub:
+@dp.callback_query_handler(lambda c: c.data == "workout")
+async def cb_workout(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("💪 Workout bo‘limi tez orada qo‘shiladi.")
+    await callback_query.answer()
+
+@dp.callback_query_handler(lambda c: c.data == "nutrition")
+async def cb_nutrition(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("🍽️ Ovqat menyusi bo‘limi tez orada qo‘shiladi.")
+    await callback_query.answer()
+
+# ------------- RUN -------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
