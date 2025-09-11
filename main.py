@@ -54,11 +54,16 @@ activity_kb = InlineKeyboardMarkup(row_width=1)
 for cb, (label, _) in ACTIVITY_LEVELS.items():
     activity_kb.insert(InlineKeyboardButton(label, callback_data=cb))
 
-goal_kb = InlineKeyboardMarkup().row(
-    InlineKeyboardButton("⬇️ Ozish", callback_data="goal_cut"),
-    InlineKeyboardButton("↔️ Formani ushlash", callback_data="goal_maintain"),
-    InlineKeyboardButton("⬆️ Vazn olish", callback_data="goal_bulk"),
-)
+goal_kb = InlineKeyboardMarkup()
+
+goal_kb.add(InlineKeyboardButton("⬇️ Ozish", callback_data="goal_cut"))
+goal_kb.add(InlineKeyboardButton("↔️ Formani ushlash", callback_data="goal_maintain"))
+goal_kb.add(InlineKeyboardButton("⬆️ Vazn olish", callback_data="goal_bulk"))
+# .row(
+#     InlineKeyboardButton("⬇️ Ozish", callback_data="goal_cut"),
+#     InlineKeyboardButton("↔️ Formani ushlash", callback_data="goal_maintain"),
+#     InlineKeyboardButton("⬆️ Vazn olish", callback_data="goal_bulk"),
+# ))
 
 # ------------- HELPERS -------------
 
@@ -241,12 +246,12 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
         return f"{a:.0f}%" if abs(a-b) < 1e-6 else f"{a:.0f}–{b:.0f}%"
 
     msg = (
-        f"{goal_name} maqsadi uchun hisob-kitob:\n\n"
+        f"{goal_name} uchun maqsadi hisob-kitob:\n\n"
         f"🔥 <b>Kunlik kaloriya:</b> {round(target_kcal):,} kcal\n"
-        f"🍗 Oqsil: {pct_txt(split.protein_pct)} → {pretty_range_or_value('g', p_g)}\n"
-        f"🥑 Yog': {pct_txt(split.fat_pct)} → {pretty_range_or_value('g', f_g)}\n"
-        f"🍚 Uglevod: {pct_txt(split.carb_pct)} → {pretty_range_or_value('g', c_g)}\n\n"
-        f"<i>(Hisob: BMR → TDEE × faoliyat → ±15% maqsadga ko‘ra → foizlardan grammga)</i>"
+        f"🍗 Oqsil: → {pretty_range_or_value('g', p_g)}\n"
+        f"🥑 Yog' → {pretty_range_or_value('g', f_g)}\n"
+        f"🍚 Uglevod → {pretty_range_or_value('g', c_g)}\n\n"
+
     )
 
     await callback_query.message.answer(msg)
