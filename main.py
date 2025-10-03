@@ -43,12 +43,13 @@ gender_kb = InlineKeyboardMarkup().row(
 
 # Faoliyat koeffitsientlari (siz bergan diapazon bilan)
 ACTIVITY_LEVELS: Dict[str, Tuple[str, float]] = {
-    "act_sedentary": ("🛋️ Minimal (o‘tirib ish)", 1.2),
-    "act_light":     ("🚶‍♂️ Yengil (1–3 marta/hafta)", 1.375),
-    "act_medium":    ("🏃‍♂️ O‘rta (3–5 marta/hafta)", 1.55),
-    "act_high":      ("🏋️‍♂️ Yuqori (6–7 marta/hafta)", 1.725),
-    "act_athlete":   ("🏆 Professional sport", 1.9),
+    "act_sedentary": ("🛋️ Juda past faollik", 1.2),
+    "act_light":     ("🚶‍♂️ Yengil faollik", 1.375),
+    "act_medium":    ("🏃‍♂️ O‘rtacha faollik", 1.55),
+    "act_high":      ("🏋️‍♂️ Yuqori faollik", 1.725),
+    "act_athlete":   ("🏆 Professional sportchilar", 1.9),
 }
+
 
 activity_kb = InlineKeyboardMarkup(row_width=1)
 for cb, (label, _) in ACTIVITY_LEVELS.items():
