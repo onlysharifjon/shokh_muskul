@@ -184,12 +184,24 @@ async def process_gender(callback_query: types.CallbackQuery, state: FSMContext)
     await state.update_data(gender=gender)
     await CaloriesStates.waiting_activity.set()
     txt = (
-        "🏃‍♂️ Faoliyat darajangizni tanlang (TDEE hisoblash uchun):\n\n"
-        "1. 1.2 — minimal (o‘tirib ish)\n"
-        "2. 1.375 — yengil (1–3 marotaba/hafta)\n"
-        "3. 1.55 — o‘rta (3–5 marotaba/hafta)\n"
-        "4. 1.725 — yuqori (6–7 marotaba/hafta)\n"
-        "5. 1.9 — professional sport"
+"""
+<b>Faollik darajalari:</b>
+
+<b>1.2</b> — <i>Juda past faollik</i>  
+(ofisda o‘tirib ishlash, jismoniy faollik deyarli yo‘q)
+
+<b>1.375</b> — <i>Yengil faollik</i>  
+(Haftasiga 1–3 marta yengil mashg‘ulotlar)
+
+<b>1.55</b> — <i>O‘rtacha faollik</i>  
+(Haftasiga 3–5 marta muntazam mashg‘ulotlar)
+
+<b>1.725</b> — <i>Yuqori faollik</i>  
+(Haftasiga 6–7 marta og‘ir yoki kuchli jismoniy mashg‘ulotlar)
+
+<b>1.9</b> — <i>Juda yuqori faollik</i>  
+(Professional sportchilar)
+"""
     )
     await callback_query.message.answer(txt, reply_markup=activity_kb)
     await callback_query.answer()
@@ -246,7 +258,7 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
         return f"{a:.0f}%" if abs(a-b) < 1e-6 else f"{a:.0f}–{b:.0f}%"
 
     msg = (
-        f"{goal_name} uchun maqsadi hisob-kitob:\n\n"
+        f"{goal_name} uchun KBJU hisob kitobi:\n\n"
         f"🔥 <b>Kunlik kaloriya:</b> {round(target_kcal):,} kcal\n"
         f"🍗 Oqsil: → {pretty_range_or_value('g', p_g)}\n"
         f"🥑 Yog' → {pretty_range_or_value('g', f_g)}\n"
