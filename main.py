@@ -1,4 +1,11 @@
 import os
+import django
+# ------------- CONNECT DJANGO -------------
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "fitness_backend.settings")
+django.setup()
+from calories.models import User, CalorieRecord
+from asgiref.sync import sync_to_async
+
 import logging
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional
@@ -39,6 +46,12 @@ main_kb = InlineKeyboardMarkup().add(
 gender_kb = InlineKeyboardMarkup().row(
     InlineKeyboardButton("👨 Erkak", callback_data="gender_male"),
     InlineKeyboardButton("👩 Ayol", callback_data="gender_female"),
+)
+
+caloriya_cb = InlineKeyboardMarkup().add(
+    InlineKeyboardButton("Mahsulotlar ro'yxati📃", web_app=types.WebAppInfo(
+        url="https://docs.google.com/spreadsheets/d/17tcmlbq5e1SzyJ47BeOfw5gIc_owyNFoJ9ZOPTZ7Vo0/edit?usp=sharing"
+    ))
 )
 
 # Faoliyat koeffitsientlari (siz bergan diapazon bilan)
@@ -126,7 +139,7 @@ def round_range(rng: Tuple[float, float], ndigits: int = 0) -> Tuple[float, floa
 
 # ------------- HANDLERS -------------
 
-@dp.message_handler(commands=["start"])
+@dp.message_handler(commands=["start"], state="*")
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer(
@@ -266,8 +279,31 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
         f"🍚 Uglevod → {pretty_range_or_value('g', c_g)}\n\n"
 
     )
+    user_obj, _ = await sync_to_async(User.objects.get_or_create)(
+        telegram_id=callback_query.from_user.id,
+        defaults={
+            "username": callback_query.from_user.username,
+            "first_name": callback_query.from_user.first_name,
+        }
+    )
 
-    await callback_query.message.answer(msg)
+    await sync_to_async(CalorieRecord.objects.create)(
+        user=user_obj,
+        height=data["height"],
+        weight=data["weight"],
+        age=data["age"],
+        gender=data["gender"],
+        activity=ACTIVITY_LEVELS[callback_query.data][1]
+        if callback_query.data in ACTIVITY_LEVELS
+        else 1.0,
+        goal=goal,
+        tdee=tdee,
+        protein=p_g[0],
+        fat=f_g[0],
+        carb=c_g[0],
+    )
+
+    await callback_query.message.answer(msg, reply_markup=caloriya_cb)
     await state.finish()
     await callback_query.answer()
 
