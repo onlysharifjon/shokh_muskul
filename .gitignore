@@ -1,0 +1,72 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+env3.*/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.coverage*
+coverage.xml
+htmlcov/
+.tox/
+*.egg-info/
+.installed.cfg
+*.egg
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+.cache/
+nosetests.xml
+
+# IDE / Editor
+.idea/
+.vscode/
+.ipynb_checkpoints/
+*.swp
+*~
+.*.sw?
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Django
+local_settings.py
+db.sqlite3
+test.db
+
+# Project specific
+log.txt
+Pipfile.lock
+.env
+.netlify/
+site/
+site_build/
+docs_build/
+docs.zip
+archive.zip
+static/
+migrations/
+uploads/
