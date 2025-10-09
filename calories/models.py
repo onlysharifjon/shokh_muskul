@@ -9,6 +9,7 @@ class User(models.Model):
     class Meta:
         verbose_name = "Foydalanuvchi"
         verbose_name_plural = "Foydalanuvchilar"
+
     def __str__(self):
         return self.username or str(self.telegram_id)
 
@@ -26,6 +27,7 @@ class CalorieRecord(models.Model):
     fat = models.FloatField()
     carb = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Kaloriya hisoboti"
         verbose_name_plural = "Kaloriya hisobotlari"
