@@ -68,8 +68,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'fitness_backend.wsgi.application'
-
+# WSGI_APPLICATION = 'fitness_backend.wsgi.application'
+ASGI_APPLICATION = 'fitness_backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
