@@ -1,6 +1,13 @@
 from django.contrib import admin
 from .models import User, CalorieRecord
 
+# 🔹 Admin’da model nomlarini o‘zgartirish
+User._meta.verbose_name = "Foydalanuvchi"
+User._meta.verbose_name_plural = "Foydalanuvchilar"
+
+CalorieRecord._meta.verbose_name = "Kaloriya hisoboti"
+CalorieRecord._meta.verbose_name_plural = "Kaloriya hisobotlari"
+
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):

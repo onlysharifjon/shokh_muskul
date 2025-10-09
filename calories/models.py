@@ -6,10 +6,6 @@ class User(models.Model):
     first_name = models.CharField(max_length=150, blank=True, null=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        verbose_name = "Foydalanuvchi"
-        verbose_name_plural = "Foydalanuvchilar"
-
     def __str__(self):
         return self.username or str(self.telegram_id)
 
@@ -28,9 +24,6 @@ class CalorieRecord(models.Model):
     carb = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        verbose_name = "Kaloriya hisoboti"
-        verbose_name_plural = "Kaloriya hisobotlari"
 
     def __str__(self):
         return f"{self.user} - {self.goal} ({round(self.tdee)} kcal)"
