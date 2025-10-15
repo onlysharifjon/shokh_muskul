@@ -144,9 +144,10 @@ def round_range(rng: Tuple[float, float], ndigits: int = 0) -> Tuple[float, floa
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer(
-        "🏋️‍♂️ Xush kelibsiz!\n\n"
-        "Bu bot sizga <b>kaloriya</b> va <b>makro</b> hisoblashda yordam beradi.\n"
-        "Boshlash uchun menudan tanlang:",
+        "🏋Shoxrux Adxamovning botiga xush kelibsiz!\n\n"
+        "Men odamlarga chiroyli va sog’lom tana qurishda yordam beraman.\n"
+        "Bu yerda siz ovqatlanish, <b>KBJU</b> va <b>Trenirovka</b> dasturini o‘zingizga mos tarzda olasiz.\n\n"
+        "<b><i>👇 Hoziroq boshlang.</i></b>",
         reply_markup=main_kb
     )
 
