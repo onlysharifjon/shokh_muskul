@@ -20,7 +20,7 @@ from aiogram.utils import executor
 
 # ------------- CONFIG -------------
 logging.basicConfig(level=logging.INFO)
-API_TOKEN = "5105648336:AAHlX2hH76iKGzcDiphhaQp7BZ9QuXqmjmA"  # .env da saqlang
+API_TOKEN = "8437567401:AAFec2OceXEKQO0r0O2GWucBCdpwJWBVExI"  # .env da saqlang
 if API_TOKEN == "REPLACE_ME":
     logging.warning("⚠️ BOT_TOKEN o'rnatilmagan. .env orqali o'rnating: BOT_TOKEN=...")
 bot = Bot(token=API_TOKEN, parse_mode="HTML")
