@@ -9,15 +9,17 @@ API_TOKEN = "8437567401:AAFec2OceXEKQO0r0O2GWucBCdpwJWBVExI"  # .env da saqlang
 bot = Bot(token=API_TOKEN, parse_mode="HTML")
 dp = Dispatcher(bot, storage=MemoryStorage())
 
-@dp.message_handler(content_types=ContentType.VIDEO)
+@dp.message_handler(content_types=ContentType.VIDEO_NOTE)
 async def handle_video(message: types.Message):
     print(True)
+    video_note_object = message.video_note
 
-    video_file_id = message.video.file_id
+    # file_id ni olish
+    file_id = video_note_object.file_id
 
     # Xabarga javob yuborish
-    await message.reply(f"Men video qabul qildim!\nFile ID: {video_file_id}")
-    print(video_file_id)
+    await message.reply(f"Men video qabul qildim!\nFile ID: {file_id}")
+    print(file_id)
 
 
 if __name__ == "__main__":
