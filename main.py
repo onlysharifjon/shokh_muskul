@@ -5,6 +5,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "fitness_backend.settings")
 django.setup()
 from calories.models import User, CalorieRecord
 from asgiref.sync import sync_to_async
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime, timedelta
 
 import logging
 from dataclasses import dataclass
@@ -17,7 +19,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from aiogram.utils import executor
 
-
+scheduler = AsyncIOScheduler()
 # ------------- CONFIG -------------
 logging.basicConfig(level=logging.INFO)
 API_TOKEN = "8437567401:AAFec2OceXEKQO0r0O2GWucBCdpwJWBVExI"  # .env da saqlang
@@ -143,6 +145,17 @@ def round_range(rng: Tuple[float, float], ndigits: int = 0) -> Tuple[float, floa
 @dp.message_handler(commands=["start"], state="*")
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.finish()
+    chat_id = message.chat.id
+    start_note_file_id = "DQACAgIAAxkBAAMyaPn3S4nvf64btvwQcGIuIRq-UmMAAh6HAAINY7BLhMOC5m3sxYQ2BA"
+
+    try:
+        await bot.send_video_note(
+            chat_id=chat_id,
+            video_note=start_note_file_id,
+        )
+
+    except Exception as e:
+        print(f"Dumaloq videoni yuborishda xatolik yuz berdi: {e}")
     await message.answer(
         "🏋Shoxrux Adxamovning botiga xush kelibsiz!\n\n"
         "Men odamlarga chiroyli va sog’lom tana qurishda yordam beraman.\n"
@@ -245,6 +258,19 @@ async def process_activity(callback_query: types.CallbackQuery, state: FSMContex
     await CaloriesStates.waiting_goal.set()
     await callback_query.answer()
 
+REMINDER_VIDEO_ID = "DQACAgIAAxkBAAM4aPn5bkWllqkRlSN8Sl-oNRaFgUoAAimHAAINY7BL94xewyKge0o2BA"
+
+
+async def send_reminder_video(bot: Bot, chat_id: int, file_id: str):
+    """Belgilangan chat_id ga dumaloq videoni yuboruvchi funksiya."""
+    try:
+        await bot.send_video_note(
+            chat_id=chat_id,
+            video_note=file_id
+        )
+    except Exception as e:
+        print(f"[{datetime.now()}] Chat {chat_id} ga video yuborishda xatolik: {e}")
+
 @dp.callback_query_handler(lambda c: c.data in ("goal_cut", "goal_maintain", "goal_bulk"), state=CaloriesStates.waiting_goal)
 async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
     goal = callback_query.data
@@ -309,6 +335,22 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
     await state.finish()
     await callback_query.answer()
 
+    # 2. 5 daqiqadan so'ng VideoNote yuborishni rejalashtirish
+
+    # Eslatmani yuborish vaqti (hozirgi vaqt + 5 daqiqa)
+    run_date = datetime.now() + timedelta(seconds=10)
+    chat_id = callback_query.message.chat.id
+
+    # Scheduler orqali vazifani rejalashtirish
+    scheduler.add_job(
+        send_reminder_video,  # Chaqliriladigan funksiya
+        'date',  # Qaysi usulda rejalashtirish (sana/vaqt bo'yicha)
+        run_date=run_date,  # Belgilangan vaqt
+        args=[bot, chat_id, REMINDER_VIDEO_ID]  # Funksiyaga uzatiladigan argumentlar
+    )
+
+    print(f"[{datetime.now()}] Chat {chat_id} uchun video eslatma {run_date} ga rejalashtirildi.")
+
 # (Ixtiyoriy) Workouts / nutrition tugmalari hozircha stub:
 @dp.callback_query_handler(lambda c: c.data == "workout")
 async def cb_workout(callback_query: types.CallbackQuery):
@@ -325,4 +367,5 @@ async def cb_nutrition(callback_query: types.CallbackQuery):
 
 # ------------- RUN -------------
 if __name__ == "__main__":
+    scheduler.start()
     executor.start_polling(dp, skip_updates=True)
