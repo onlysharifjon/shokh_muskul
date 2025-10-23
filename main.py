@@ -346,7 +346,7 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
     # 2. 5 daqiqadan so'ng VideoNote yuborishni rejalashtirish
 
     # Eslatmani yuborish vaqti (hozirgi vaqt + 5 daqiqa)
-    run_date = datetime.now() + timedelta(seconds=10)
+    run_date = datetime.now() + timedelta(minutes=5)
     chat_id = callback_query.message.chat.id
 
     # Scheduler orqali vazifani rejalashtirish
