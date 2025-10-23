@@ -33,9 +33,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 
 async def on_startup_notify(dp):
     # Bu funksiya loop ishga tushganidan keyin chaqiriladi
-    print("Bot ishga tushdi. Scheduler boshlanmoqda...")
     scheduler.start()
-    print("Scheduler muvaffaqiyatli boshlandi.")
 # ------------- STATES -------------
 class CaloriesStates(StatesGroup):
     waiting_height = State()
@@ -357,7 +355,6 @@ async def process_goal(callback_query: types.CallbackQuery, state: FSMContext):
         args=[bot, chat_id, REMINDER_VIDEO_ID]  # Funksiyaga uzatiladigan argumentlar
     )
 
-    print(f"[{datetime.now()}] Chat {chat_id} uchun video eslatma {run_date} ga rejalashtirildi.")
 
 # (Ixtiyoriy) Workouts / nutrition tugmalari hozircha stub:
 @dp.callback_query_handler(lambda c: c.data == "workout")
