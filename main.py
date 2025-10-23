@@ -15,6 +15,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.dispatcher.filters.content_type import ContentType
 from aiogram.utils import executor
 
 
@@ -319,6 +320,15 @@ async def cb_workout(callback_query: types.CallbackQuery):
 async def cb_nutrition(callback_query: types.CallbackQuery):
     await callback_query.message.answer("🍽️ Ovqat menyusi bo‘limi tez orada qo‘shiladi.")
     await callback_query.answer()
+
+
+@dp.message_handler(content_types=ContentType.VIDEO)
+async def handle_video(message: types.Message):
+
+    video_file_id = message.video.file_id
+
+    # Xabarga javob yuborish
+    await message.reply(f"Men video qabul qildim!\nFile ID: {video_file_id}")
 
 # ------------- RUN -------------
 if __name__ == "__main__":
