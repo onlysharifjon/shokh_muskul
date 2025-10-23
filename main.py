@@ -323,11 +323,13 @@ async def cb_nutrition(callback_query: types.CallbackQuery):
 
 @dp.message_handler(content_types=ContentType.VIDEO)
 async def handle_video(message: types.Message):
+    print(True)
 
     video_file_id = message.video.file_id
 
     # Xabarga javob yuborish
     await message.reply(f"Men video qabul qildim!\nFile ID: {video_file_id}")
+    print(video_file_id)
 
 # ------------- RUN -------------
 if __name__ == "__main__":
