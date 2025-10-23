@@ -20,6 +20,8 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentTyp
 from aiogram.utils import executor
 
 scheduler = AsyncIOScheduler()
+
+
 # ------------- CONFIG -------------
 logging.basicConfig(level=logging.INFO)
 API_TOKEN = "8437567401:AAFec2OceXEKQO0r0O2GWucBCdpwJWBVExI"  # .env da saqlang
@@ -28,6 +30,12 @@ if API_TOKEN == "REPLACE_ME":
 bot = Bot(token=API_TOKEN, parse_mode="HTML")
 dp = Dispatcher(bot, storage=MemoryStorage())
 
+
+async def on_startup_notify(dp):
+    # Bu funksiya loop ishga tushganidan keyin chaqiriladi
+    print("Bot ishga tushdi. Scheduler boshlanmoqda...")
+    scheduler.start()
+    print("Scheduler muvaffaqiyatli boshlandi.")
 # ------------- STATES -------------
 class CaloriesStates(StatesGroup):
     waiting_height = State()
@@ -366,6 +374,9 @@ async def cb_nutrition(callback_query: types.CallbackQuery):
 
 
 # ------------- RUN -------------
-if __name__ == "__main__":
-    scheduler.start()
-    executor.start_polling(dp, skip_updates=True)
+if __name__ == '__main__':
+    executor.start_polling(
+        dp,
+        on_startup=on_startup_notify, # <<--- Shu yerga qo'shiladi
+        skip_updates=True
+    )
