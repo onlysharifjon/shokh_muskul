@@ -148,20 +148,32 @@ def round_range(rng: Tuple[float, float], ndigits: int = 0) -> Tuple[float, floa
 
 # ------------- HANDLERS -------------
 
+ALLOWED_UUID = "b6a0a1e2-80f3-4a7c-8c21-d2a88f0b34cd"
+
 @dp.message_handler(commands=["start"], state="*")
 async def cmd_start(message: types.Message, state: FSMContext):
-    await state.finish()
+    args = message.get_args().strip()  # /start <uuid> dagi uuid ni olish
     chat_id = message.chat.id
+
+    # 🧩 Faqat maxsus UUID orqali kelsa ishga tushadi
+    if args != ALLOWED_UUID:
+        # ❌ Boshqa hollarda hech nima yuborilmaydi
+        return
+
+    await state.finish()
+
     start_note_file_id = "DQACAgIAAxkBAAMyaPn3S4nvf64btvwQcGIuIRq-UmMAAh6HAAINY7BLhMOC5m3sxYQ2BA"
 
+    # 🌀 Dumaloq video yuborish
     try:
         await bot.send_video_note(
             chat_id=chat_id,
             video_note=start_note_file_id,
         )
-
     except Exception as e:
         print(f"Dumaloq videoni yuborishda xatolik yuz berdi: {e}")
+
+    # 🏋‍♂️ Xush kelibsiz xabar
     await message.answer(
         "🏋Shoxrux Adxamovning botiga xush kelibsiz!\n\n"
         "Men odamlarga chiroyli va sog’lom tana qurishda yordam beraman.\n"
